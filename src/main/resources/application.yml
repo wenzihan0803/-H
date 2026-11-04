@@ -1,0 +1,119 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+    encoding:
+      charset: UTF-8
+      force: true
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 20
+    max-http-form-post-size: 20MB
+
+spring:
+  application:
+    name: pw-server
+  profiles:
+    active: dev
+  # 时间统一按东八区处理：DB 存 datetime(3)，接口输出 ISO8601 +08:00
+  jackson:
+    default-property-inclusion: non_null
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+      fail-on-empty-beans: false
+    deserialization:
+      fail-on-unknown-properties: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
+  task:
+    scheduling:
+      pool:
+        size: 4
+      thread-name-prefix: pw-sched-
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    banner: false
+    db-config:
+      # 雪花 ID 由应用生成，不用数据库自增
+      id-type: input
+      # 软删除仅 user 表使用，通过实体上的 @TableLogic 显式声明；
+      # 订单/资金表禁止物理删除，故不做全局逻辑删除配置
+  mapper-locations: classpath*:/mapper/**/*.xml
+
+springdoc:
+  api-docs:
+    enabled: true
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+# ============================================================
+# 业务参数（口径来源：技术规范/README.md）
+# ============================================================
+pw:
+  jwt:
+    # 生产必须用环境变量覆盖，长度 >= 32 字节
+    secret: ${JWT_SECRET:pw-dev-jwt-secret-key-please-override-in-prod-32bytes}
+    access-ttl-seconds: 7200        # Access 2h
+    refresh-ttl-seconds: 604800     # Refresh 7d
+    issuer: pw-server
+  crypto:
+    # 手机号 / 身份证 / 老板游戏 ID 的 AES-GCM 密钥，生产必须覆盖
+    secret-key: ${CRYPTO_KEY:pw-dev-crypto-key-please-override-in-prod-32b}
+  file:
+    storage: local                  # local | cos
+    local-dir: data/uploads
+    public-base-url: http://localhost:8080/api/v1/files
+    sign-ttl-seconds: 600           # 读取用 10 分钟签名 URL
+    max-size-mb: 10
+  feature:
+    realname: false                 # 实名 guard 放行（本期不做，上线前启用）
+    booster-apply-full: false       # 入驻六道关完整流程关闭（先 mock）
+    minor-check: false              # 未成年拦截（随实名一并后补）
+  wechat:
+    appid: ${WX_APPID:}
+    secret: ${WX_SECRET:}
+    mock-login: true                # dev 专用 openid 直登
+  pay:
+    mode: simulate                  # simulate | wechat
+    mch-id: ${WX_MCH_ID:}
+    api-v3-key: ${WX_API_V3_KEY:}
+    notify-url: ${WX_NOTIFY_URL:http://localhost:8080/api/v1/webhooks/wechat/recharge}
+  im:
+    enabled: false                  # 降级为站内信
+    sdk-app-id: ${IM_SDK_APP_ID:0}
+    secret-key: ${IM_SECRET_KEY:}
+  business:
+    booster-share-rate: 85          # 正常完成：打手收益 = 订单原价 * 85%
+    platform-commission-rate: 15    # 平台费 = 订单原价 * 15%（确认收货时收）
+    member-platform-commission-rate: 10  # 会员单平台费 = 原价 * 10%（平台少抽 5 个点）
+    member-discount-rate: 90        # 会员 9 折（客户实付 = 原价 * 90%）
+    member-threshold-amount: 200000 # 单笔充值满 2000 元（分）自动建会员申请
+    confirm-days: 7                 # 7 天自动确认
+    withdraw-min-amount: 100        # 最低提现 1 元
+    withdraw-max-amount: 500000     # 单笔上限 5000 元
+    withdraw-daily-limit: 1         # 每日 1 次
+    withdraw-review-hours: 24       # 管理员 24h 内确认
+    handover-sla-minutes: 10        # 交接 SLA
+    handover-escalate-minutes: 20   # 升级管理员
+    handover-booster-refund-minutes: 30  # 打手可无责退款
+  ratelimit:
+    login-per-minute: 10
+    recharge-per-minute: 10
+    withdraw-per-minute: 5
+
+logging:
+  level:
+    root: INFO
+    com.pw: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-}] %-5level %logger{36} - %msg%n"

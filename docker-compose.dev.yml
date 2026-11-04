@@ -1,0 +1,49 @@
+# ============================================================
+# 本地开发基础设施：MySQL 8 + Redis 7
+# 启动：docker compose -f docker-compose.dev.yml up -d
+# 说明：仅用于 dev，生产环境数据库不开公网、独立部署
+# ============================================================
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: pw-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: pw_dev
+      TZ: Asia/Shanghai
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_general_ci
+      - --default-time-zone=+08:00
+      - --max_connections=500
+      - --innodb_buffer_pool_size=512M
+    ports:
+      - "3306:3306"
+    volumes:
+      - pw-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: pw-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - pw-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+volumes:
+  pw-mysql-data:
+  pw-redis-data:

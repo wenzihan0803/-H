@@ -1,0 +1,19 @@
+# 构建产物（可重新生成）
+target/
+build/
+*.class
+*.jar
+
+# 运行产物
+logs/
+*.log
+data/mysql/
+
+# 系统文件
+.DS_Store
+
+# 本地环境与 IDE
+*.local
+.env
+.idea/
+*.iml
