@@ -8,6 +8,8 @@ build/
 logs/
 *.log
 data/mysql/
+# 本地文件存储运行时上传（file.storage=local 的产物，不入库）
+data/uploads/
 
 # 系统文件
 .DS_Store
